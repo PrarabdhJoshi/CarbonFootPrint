@@ -3,8 +3,8 @@ var call_api = require('./data-injection').call_api
 
 exports.http = (request, response) => {
   call_api('http://api.footprintnetwork.org/v1/types')
-  .then(response=>{
-    response.status(200).send(JSON.stringify(response));
+  .then(typeData=>{
+    response.status(200).send(typeData);
     // console.log(response)
   })
   .catch(err=>{
