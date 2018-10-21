@@ -1,8 +1,18 @@
 const serverless = require('serverless-http');
 const express = require('express')
+const bodyParser = require('body-parser');
 const app = express()
 'use strict';
 const call_api        = require('./data-injection').call_api
+
+const AWS = require('aws-sdk');
+
+
+const USERS_TABLE = process.env.USERS_TABLE;
+const dynamoDb = new AWS.DynamoDB.DocumentClient();
+
+app.use(bodyParser.json({ strict: false }));
+
 
 const country_map = { Armenia: '1',
 Afghanistan: '2',
@@ -214,12 +224,12 @@ Caribbean: '1001',
 'Eastern Africa': '1004',
 'Eastern Asia': '1005',
 'Eastern Europe': '1006',
-Melanesia: '1007',
-Micronesia: '1008',
+'Melanesia': '1007',
+'Micronesia': '1008',
 'Middle Africa': '1009',
 'Northern Africa': '1011',
 'Northern Europe': '1012',
-Polynesia: '1013',
+'Polynesia': '1013',
 'South America': '1014',
 'South-Eastern Asia': '1015',
 'Southern Africa': '1016',
@@ -250,5 +260,53 @@ app.get('/perperson/:country/:year', function (req, res) {
     .catch(err=>{res.status(400).send("Error!")})
 
 })
+
+app.post('/users', function (req, res) {
+    const { userId, name } = req.body;
+    if (typeof userId !== 'string') {
+      res.status(400).json({ error: '"userId" must be a string' });
+    } else if (typeof name !== 'string') {
+      res.status(400).json({ error: '"name" must be a string' });
+    }
+  
+    const params = {
+      TableName: USERS_TABLE,
+      Item: {
+        userId: userId,
+        name: name,
+      },
+    };
+  
+    dynamoDb.put(params, (error) => {
+      if (error) {
+        console.log(error);
+        res.status(400).json({ error: 'Could not create user' });
+      }
+      res.json({ userId, name });
+    });
+  })
+
+  // Get User endpoint
+app.get('/users/:userId', function (req, res) {
+    const params = {
+      TableName: USERS_TABLE,
+      Key: {
+        userId: req.params.userId,
+      },
+    }
+  
+    dynamoDb.get(params, (error, result) => {
+      if (error) {
+        console.log(error);
+        res.status(400).json({ error: 'Could not get user' });
+      }
+      if (result.Item) {
+        const {userId, name} = result.Item;
+        res.json({ userId, name });
+      } else {
+        res.status(404).json({ error: "User not found" });
+      }
+    });
+  })
 
 module.exports.handler = serverless(app);
